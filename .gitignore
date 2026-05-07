@@ -3,6 +3,7 @@ __pycache__/
 *.pyc
 *.pyo
 *.log
+!logs/*.log
 *.txt
 !requirements.txt
 !.gitkeep
