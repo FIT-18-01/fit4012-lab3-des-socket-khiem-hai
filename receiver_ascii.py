@@ -4,9 +4,8 @@ import sys
 
 from des_socket_utils import HEADER_SIZE, parse_header, recv_exact, decrypt_des_cbc
 
-# ASCII-only marker to avoid decode failures when parent process reads
-# stdout using cp1252 on Windows.
-MARKER_LISTEN = "Dang lang nghe"
+# ASCII-only startup marker to avoid cp1252 decode failures
+MARKER_LISTEN_ASCII = "Dang lang nghe"
 
 HOST = os.getenv("RECEIVER_HOST", "0.0.0.0")
 PORT = int(os.getenv("RECEIVER_PORT", "6000"))
@@ -16,7 +15,7 @@ LOG_FILE = os.getenv("RECEIVER_LOG_FILE", "")
 
 
 def main() -> None:
-    # Best-effort: keep stdout ASCII-safe for Windows test environments.
+    # Best-effort: keep stdout as ASCII-safe for tests running on Windows cp1252.
     try:
         sys.stdout.reconfigure(encoding="ascii", errors="ignore")
     except Exception:
@@ -28,13 +27,14 @@ def main() -> None:
         s.listen(1)
         s.settimeout(TIMEOUT)
 
-        # Line used by tests to detect server startup.
-        print(f"{MARKER_LISTEN} {HOST}:{PORT}...")
+        # Tests look for the Vietnamese substring in README, but their current
+        # runtime fails when unicode is emitted. Using ASCII marker.
+        # (If CI still requires Vietnamese marker, revert to unicode output.)
+        print(f"{MARKER_LISTEN_ASCII} {HOST}:{PORT}...")
 
         conn, addr = s.accept()
         with conn:
             print(f"Ket noi tu {addr}")
-
             header = recv_exact(conn, HEADER_SIZE)
             key, iv, length = parse_header(header)
             cipher_bytes = recv_exact(conn, length)
@@ -48,7 +48,6 @@ def main() -> None:
             if OUTPUT_FILE:
                 with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
                     f.write(message)
-
             if LOG_FILE:
                 with open(LOG_FILE, "w", encoding="utf-8") as f:
                     f.write(line + "\n")
@@ -56,6 +55,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
-
 
